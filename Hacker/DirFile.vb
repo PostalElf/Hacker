@@ -1,18 +1,11 @@
 ﻿Public MustInherit Class DirFile
-    Public Name As String
-    Public ParentDirectory As Dir
-    Public MustOverride ReadOnly Property Path As String
     Public Overrides Function ToString() As String
         Return Name
     End Function
 
-    Public WriteAccess As ePriv = ePriv.Guest
-    Public ReadAccess As ePriv = ePriv.Guest
-End Class
-
-Public Class Dir
-    Inherits DirFile
-    Public Overrides ReadOnly Property Path As String
+    Public Name As String
+    Public ParentDirectory As Dir
+    Public ReadOnly Property Path As String
         Get
             If ParentDirectory Is Nothing OrElse ParentDirectory.Name = "root" Then
                 If Name = "root" Then
@@ -23,6 +16,13 @@ Public Class Dir
             Return ParentDirectory.Path & Name & "/"
         End Get
     End Property
+
+    Public WriteAccess As ePriv = ePriv.Guest
+    Public ReadAccess As ePriv = ePriv.Guest
+End Class
+
+Public Class Dir
+    Inherits DirFile
     Public Sub New(ByVal _name As String)
         Name = _name
     End Sub
@@ -75,12 +75,6 @@ Public Class File
     Public Sub New(ByVal _name As String)
         Name = _name
     End Sub
-    Public Overrides ReadOnly Property Path As String
-        Get
-            If ParentDirectory Is Nothing OrElse ParentDirectory.Name = "root" Then Return "/"
-            Return ParentDirectory.Path & Name & "/"
-        End Get
-    End Property
     Public Function Clone() As File
         Return New File(Name)
     End Function
