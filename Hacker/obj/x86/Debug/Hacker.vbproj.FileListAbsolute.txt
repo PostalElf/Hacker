@@ -1,0 +1,8 @@
+D:\Visual Studio Projects\Hacker\Hacker\bin\Debug\Hacker.exe
+D:\Visual Studio Projects\Hacker\Hacker\bin\Debug\Hacker.pdb
+D:\Visual Studio Projects\Hacker\Hacker\bin\Debug\Hacker.xml
+D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.Resources.resources
+D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.vbproj.GenerateResource.Cache
+D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.exe
+D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.xml
+D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.pdb
