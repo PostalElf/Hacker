@@ -70,9 +70,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Dev\Common.vb" />
-    <Compile Include="DirFile.vb" />
-    <Compile Include="ePriv.vb" />
-    <Compile Include="Machine.vb" />
+    <Compile Include="OS\DirFile.vb" />
+    <Compile Include="OS\ePriv.vb" />
+    <Compile Include="OS\Machine.vb" />
     <Compile Include="Module1.vb" />
     <Compile Include="My Project\AssemblyInfo.vb" />
     <Compile Include="My Project\Application.Designer.vb">
@@ -89,8 +89,8 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <Compile Include="Player.vb" />
-    <Compile Include="sMachineDirFile.vb" />
+    <Compile Include="OS\Player.vb" />
+    <Compile Include="OS\sMachineDirFile.vb" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="My Project\Resources.resx">

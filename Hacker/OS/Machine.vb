@@ -18,6 +18,11 @@
     End Sub
 
     Public Name As String
+    Public ReadOnly Property NameFull As String
+        Get
+            Return Type & "-" & Name
+        End Get
+    End Property
     Public Type As String
     Public Overrides Function ToString() As String
         Return Type & "-" & Name
@@ -96,7 +101,8 @@
             Case "cp" : Return CopyFile(rawsplit)
             Case "del", "rm" : Return DeleteFile(rawsplit)
             Case "dir", "ls" : Return ListDirectory()
-            Case "login", "su" : Return ChangeUser(rawsplit)
+            Case "su" : Return ChangeUser(rawsplit)
+            Case "login" : Return LoginUser(rawsplit)
             Case "md" : Return MakeDirectory(rawsplit)
             Case "mv"
                 If CopyFile(rawsplit) = False Then Return False
@@ -212,6 +218,23 @@
         file.ParentDirectory.Remove(file)
         Return True
     End Function
+    Private Function LoginUser(ByVal rawsplit As String()) As Boolean
+        If ActiveUser = "" Then
+            'no loggedin user
+            Return ChangeUser(rawsplit)
+        Else
+            'has loggedin user
+            'check to see if activemachine is the same
+            If Player.ActiveMount.Equals(Me) Then
+                'same machine, run as alias of su
+                Return ChangeUser(rawsplit)
+            Else
+                'different machine, login command does nothing so just return true
+                'most likely being run as part of cm
+                Return True
+            End If
+        End If
+    End Function
     Private Function ChangeUser(ByVal rawsplit As String()) As Boolean
         Dim userName As String
         Dim password As String
@@ -248,9 +271,13 @@
             fileName = Console.ReadLine()
         End If
 
-        Dim file As File = ActiveDirectory.GetFile(fileName)
+        Dim path As sMachineDirFile = GetDirFileFromPath(fileName)
+        Dim machine As Machine = path.Machine
+        Dim file As File = path.DirFile
         If file Is Nothing Then Console.WriteLine("Invalid file name.") : Return False
-        If CheckPrivillege(file.ReadAccess) = False Then Return False
+        If machine.CheckPrivillege(file.ReadAccess) = False Then Return False
+
+
     End Function
 #End Region
 
@@ -275,7 +302,6 @@
     Public Sub DebugSetupDrone()
         Name = "grugnir"
         Type = "drone"
-        ActiveUser = "admin"
 
         Passwd.Contents.Add("admin:admin:9")
 
