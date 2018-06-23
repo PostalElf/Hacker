@@ -86,6 +86,13 @@ Public Class File
         If target = Name Then Return Me
         Return Nothing
     End Function
+End Class
 
-    Public IsExecutable As Boolean = False
+Public Class FileExecutable
+    Inherits File
+    Public Sub New(ByVal _name As String)
+        MyBase.New(_name)
+    End Sub
+    Public Type As eExecutable
+    Public Strength As Integer
 End Class

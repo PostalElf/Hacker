@@ -71,6 +71,7 @@
   <ItemGroup>
     <Compile Include="Dev\Common.vb" />
     <Compile Include="OS\DirFile.vb" />
+    <Compile Include="OS\eExecutable.vb" />
     <Compile Include="OS\ePriv.vb" />
     <Compile Include="OS\Machine.vb" />
     <Compile Include="Module1.vb" />

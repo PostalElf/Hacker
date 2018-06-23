@@ -44,6 +44,12 @@
         If path.EndsWith("/") Then path = path.Remove(path.Length - 1, 1)
         Dim ps As String() = path.Split("/")
 
+        'determine if path is referencing current active directory
+        If ps.Length = 1 Then
+            Dim temp As File = ActiveDirectory.GetFile(ps(0))
+            If temp Is Nothing = False Then Return New sMachineDirFile(Me, temp) Else Return Nothing
+        End If
+
         'determine if path is on active machine
         Dim startIndex As Integer = 1
         Dim machine As Machine = Player.GetMount(ps(0))
@@ -108,7 +114,7 @@
                 If CopyFile(rawsplit) = False Then Return False
                 Return DeleteFile(rawsplit)
             Case "path" : Console.WriteLine(ActiveDirectory.Path) : Return True
-            Case "run", "r" : Return RunFile(rawsplit)
+            Case "run", "r", "exe" : Return RunFile(rawsplit)
 
             Case Else : Return Player.Main(rawsplit)
         End Select
@@ -272,11 +278,23 @@
         End If
 
         Dim path As sMachineDirFile = GetDirFileFromPath(fileName)
+        If path Is Nothing Then Console.WriteLine(fileName & ": file not found.") : Return False
         Dim machine As Machine = path.Machine
         Dim file As File = path.DirFile
-        If file Is Nothing Then Console.WriteLine("Invalid file name.") : Return False
-        If machine.CheckPrivillege(file.ReadAccess) = False Then Return False
+        If TypeOf file Is FileExecutable = False Then Console.WriteLine(file.Name & " is not an executable file and cannot be run.") : Return False
+        Dim efile As FileExecutable = CType(file, FileExecutable)
+        If machine.CheckPrivillege(efile.ReadAccess) = False Then Return False
 
+        Select Case efile.Type
+            Case eExecutable.Dictionary : Return RunDictionary(rawsplit, efile)
+
+            Case eExecutable.Null : Console.WriteLine(file.Name & " is not an executable file and cannot be run.") : Return False
+            Case Else : Throw New Exception("Unrecognised eExecutable type.")
+        End Select
+    End Function
+
+    Private Function RunDictionary(ByVal rawsplit As String(), ByVal exe As FileExecutable) As Boolean
+        'calculate dictionary cost
 
     End Function
 #End Region
