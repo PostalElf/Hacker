@@ -72,16 +72,13 @@ Public Class Dir
     End Sub
 End Class
 
-Public Class File
+Public MustInherit Class File
     Inherits DirFile
     Public Sub New(ByVal _name As String)
         Name = _name
     End Sub
-    Public Function Clone() As File
-        Return New File(Name)
-    End Function
+    Public MustOverride Function Clone() As File
 
-    Public Contents As New List(Of String)
     Public Overrides Function GetDirFile(ByVal target As String) As DirFile
         If target = Name Then Return Me
         Return Nothing
@@ -93,6 +90,29 @@ Public Class FileExecutable
     Public Sub New(ByVal _name As String)
         MyBase.New(_name)
     End Sub
+    Public Overrides Function Clone() As File
+        Return New FileExecutable(Name)
+    End Function
+
     Public Type As eExecutable
     Public Strength As Integer
+End Class
+
+Public Class FileData
+    Inherits File
+    Public Sub New(ByVal _name As String)
+        MyBase.New(_name)
+    End Sub
+    Public Overrides Function Clone() As File
+        Return New FileData(Name)
+    End Function
+
+    Public Contents As New List(Of String)
+    Public Sub Display()
+        Dim n As Integer = 0
+        For Each l In Contents
+            Console.WriteLine(n.ToString("000") & "  " & l)
+            n += 1
+        Next
+    End Sub
 End Class

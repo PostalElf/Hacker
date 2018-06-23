@@ -10,9 +10,9 @@
             .WriteAccess = ePriv.Admin
             .RemoveAccess = ePriv.Impossible
 
-            .Add(New File("passwd"))
+            .Add(New FileData("passwd"))
             Passwd = GetDirFileFromPath("/etc/passwd").DirFile
-            .Add(New File("logs"))
+            .Add(New FileData("logs"))
             Logs = GetDirFileFromPath("/etc/logs").DirFile
         End With
     End Sub
@@ -76,7 +76,7 @@
         End If
     End Function
     Private Function GetUserTable() As Dictionary(Of String, String())
-        Dim uidFile As File = GetDirFileFromPath("/etc/passwd").DirFile
+        Dim uidFile As FileData = GetDirFileFromPath("/etc/passwd").DirFile
         Dim uidData As List(Of String) = uidFile.Contents
 
         Dim uidTable As New Dictionary(Of String, String())
@@ -91,10 +91,19 @@
 
         Return uidTable
     End Function
+    Private Function GetFileData(ByVal rawpath As String) As sMachineDirFile
+        'get machine and file, then check
+        Dim path As sMachineDirFile = GetDirFileFromPath(rawpath)
+        If path Is Nothing OrElse TypeOf path.DirFile Is File = False Then Console.WriteLine("File not found.") : Return Nothing
+        If TypeOf path.DirFile Is FileData = False Then Console.WriteLine(path.DirFile.Name & " is not a data file and cannot be edited.") : Return Nothing
+        If path.Machine.CheckPrivillege(path.DirFile.WriteAccess) = False Then Return Nothing
+
+        Return path
+    End Function
 
     Private RootDirectory As New Dir("root")
-    Private Passwd As File
-    Private Logs As File
+    Private Passwd As FileData
+    Private Logs As FileData
 #End Region
 
 #Region "Main"
@@ -107,6 +116,8 @@
             Case "cp" : Return CopyFile(rawsplit)
             Case "del", "rm" : Return DeleteFile(rawsplit)
             Case "dir", "ls" : Return ListDirectory()
+            Case "edit", "vim", "vi" : Return EditFile(rawsplit)
+            Case "read" : Return ReadFile(rawsplit)
             Case "su" : Return ChangeUser(rawsplit)
             Case "login" : Return LoginUser(rawsplit)
             Case "md" : Return MakeDirectory(rawsplit)
@@ -204,6 +215,60 @@
         destinationDir.Add(target.Clone)
         Return True
     End Function
+    Private Function ReadFile(ByVal rawsplit As String()) As Boolean
+        'get parameters
+        Dim filename As String
+        If rawsplit.Length >= 2 Then
+            filename = rawsplit(1)
+        Else
+            Console.Write("Edit which file? ")
+            filename = Console.ReadLine
+        End If
+        Dim path As sMachineDirFile = GetFileData(filename)
+
+        Dim dFile As FileData = CType(path.DirFile, FileData)
+        Console.WriteLine(dFile.Name)
+        dFile.Display()
+        Return True
+    End Function
+    Private Function EditFile(ByVal rawsplit As String()) As Boolean
+        'display file
+        If ReadFile(rawsplit) = False Then Return False
+
+        'get parameters
+        Dim filename As String
+        If rawsplit.Length >= 2 Then
+            filename = rawsplit(1)
+        Else
+            Console.Write("Read which file? ")
+            filename = Console.ReadLine
+        End If
+        Dim path As sMachineDirFile = GetFileData(filename)
+        Dim dFile As FileData = CType(path.DirFile, FileData)
+
+        'get linenumber
+        Dim lineNumber As Integer
+        While True
+            Console.WriteLine()
+            Console.Write("Edit which line? ")
+            Dim lineNumberStr As String = Console.ReadLine
+            If lineNumberStr = "-1" Then Return False
+            If Int32.TryParse(lineNumberStr, lineNumber) AndAlso lineNumber >= 0 Then Exit While
+        End While
+
+        'get content and write content
+        Dim lineContent As String
+        If lineNumber >= dFile.Contents.Count Then
+            Console.Write("New line? ")
+            lineContent = Console.ReadLine
+            dFile.Contents.Add(lineContent)
+        Else
+            Console.Write("Line #" & lineNumber & "? ")
+            lineContent = Console.ReadLine
+            dFile.Contents(lineNumber) = lineContent
+        End If
+        Return True
+    End Function
     Private Function DeleteFile(ByVal rawsplit As String()) As Boolean
         If CheckPrivillege(ActiveDirectory.WriteAccess) = False Then Return False
         If CheckPrivillege(ActiveDirectory.removeAccess) = False Then Return False
@@ -294,6 +359,8 @@
     End Function
 
     Private Function RunDictionary(ByVal rawsplit As String(), ByVal exe As FileExecutable) As Boolean
+        If exe Is Nothing Then Return False
+
         'calculate dictionary cost
 
     End Function
@@ -313,7 +380,7 @@
             .Add(New Dir("test2"))
             .Add(New Dir("test3"))
         End With
-        RootDirectory.GetDir("test1").Add(New File("guests.txt"))
+        RootDirectory.GetDir("test1").Add(New FileData("guests.txt"))
         RootDirectory.GetDir("test2").Add(New Dir("dump"))
         RootDirectory.GetDir("test2").GetDir("dump").Add(New Dir("ster"))
     End Sub
