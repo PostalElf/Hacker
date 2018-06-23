@@ -16,9 +16,11 @@
             Return ParentDirectory.Path & Name & "/"
         End Get
     End Property
+    Public MustOverride Function GetDirFile(ByVal target As String) As DirFile
 
     Public WriteAccess As ePriv = ePriv.Guest
     Public ReadAccess As ePriv = ePriv.Guest
+    Public RemoveAccess As ePriv = ePriv.Guest
 End Class
 
 Public Class Dir
@@ -44,7 +46,7 @@ Public Class Dir
         Next
         Return Nothing
     End Function
-    Public Function GetDirFile(ByVal target As String) As DirFile
+    Public Overrides Function GetDirFile(ByVal target As String) As DirFile
         For Each f In Contents
             If f.Name.ToLower = target.ToLower Then Return f
         Next
@@ -80,4 +82,10 @@ Public Class File
     End Function
 
     Public Contents As New List(Of String)
+    Public Overrides Function GetDirFile(ByVal target As String) As DirFile
+        If target = Name Then Return Me
+        Return Nothing
+    End Function
+
+    Public IsExecutable As Boolean = False
 End Class

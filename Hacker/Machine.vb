@@ -1,5 +1,27 @@
 ﻿Public Class Machine
-    Private Name As String
+    Public Sub New()
+        ActiveDirectory = RootDirectory
+        RootDirectory.ParentDirectory = RootDirectory
+
+        Dim etc As Dir = New Dir("etc")
+        RootDirectory.Add(etc)
+        With etc
+            .ReadAccess = ePriv.Power
+            .WriteAccess = ePriv.Admin
+            .RemoveAccess = ePriv.Impossible
+
+            .Add(New File("passwd"))
+            Passwd = GetDirFileFromPath("/etc/passwd").DirFile
+            .Add(New File("logs"))
+            Logs = GetDirFileFromPath("/etc/logs").DirFile
+        End With
+    End Sub
+
+    Public Name As String
+    Public Type As String
+    Public Overrides Function ToString() As String
+        Return Type & "-" & Name
+    End Function
     Public ReadOnly Property Prompt As String
         Get
             Dim total As String = ActiveUser & "@" & Name & " "
@@ -9,25 +31,41 @@
     End Property
     Private ActiveUser As String
     Private ActiveDirectory As Dir
-    Private ActiveMount As Machine
-    Private RootDirectory As New Dir("root")
-    Private Mounts As New List(Of Machine)
 
-    Public Function GetDirFromPath(ByVal path As String) As Dir
+#Region "Utilities"
+    Public Function GetDirFileFromPath(ByVal path As String) As sMachineDirFile
+        'strip beginning and end /, then split path into string()
         If path.StartsWith("/") Then path = path.Remove(0, 1)
         If path.EndsWith("/") Then path = path.Remove(path.Length - 1, 1)
         Dim ps As String() = path.Split("/")
-        Dim current As Dir = RootDirectory
-        For n = 0 To ps.Length - 1
-            Dim temp As Dir = current.GetDir(ps(n))
+
+        'determine if path is on active machine
+        Dim startIndex As Integer = 1
+        Dim machine As Machine = Player.GetMount(ps(0))
+        If machine Is Nothing Then startIndex = 0 : machine = Me
+
+        Dim current As DirFile = machine.RootDirectory
+        For n = startIndex To ps.Length - 1
+            Dim temp As DirFile = current.GetDirFile(ps(n))
             If temp Is Nothing Then Return Nothing
             current = temp
         Next
-        Return current
+        Return New sMachineDirFile(machine, current)
+    End Function
+    Public Function CheckPrivillege(ByVal target As ePriv) As Boolean
+        Dim uidTable = GetUserTable()
+        Dim priv As ePriv = uidTable(ActiveUser)(1)
+
+        If target = ePriv.Impossible Then Console.WriteLine("Error! This is a protected system file and cannot be removed or modified.") : Return False
+        If priv >= target Then
+            Return True
+        Else
+            Console.WriteLine("Insufficient user privilleges: " & target.ToString & " user or higher required.")
+            Return False
+        End If
     End Function
     Private Function GetUserTable() As Dictionary(Of String, String())
-        Dim uidPath As Dir = GetDirFromPath("/etc/")
-        Dim uidFile As File = uidPath.GetFile("passwd")
+        Dim uidFile As File = GetDirFileFromPath("/etc/passwd").DirFile
         Dim uidData As List(Of String) = uidFile.Contents
 
         Dim uidTable As New Dictionary(Of String, String())
@@ -42,56 +80,45 @@
 
         Return uidTable
     End Function
-    Private Function CheckPrivillege(ByVal target As ePriv) As Boolean
-        Dim uidTable = GetUserTable()
-        Dim priv As ePriv = uidTable(ActiveUser)(1)
 
-        If priv >= target Then
-            Return True
-        Else
-            Console.WriteLine("Insufficient user privilleges: " & target.ToString & " user or higher required.")
-            Return False
-        End If
-    End Function
+    Private RootDirectory As New Dir("root")
+    Private Passwd As File
+    Private Logs As File
+#End Region
 
-    Public Sub New()
-        ActiveDirectory = RootDirectory
-        RootDirectory.ParentDirectory = RootDirectory
-
-        Dim etc As Dir = New Dir("etc")
-        RootDirectory.Add(etc)
-        Dim passwd As File = New File("passwd")
-        etc.Add(passwd)
-        etc.Add(New File("logs"))
-    End Sub
-    Public Sub Main(ByVal raw As String)
+#Region "Main"
+    Public Function Main(ByVal raw As String) As Boolean
         Dim rawsplit As String() = raw.Split(" ")
         Select Case rawsplit(0).ToLower
-            Case "cd" : ChangeDirectory(rawsplit)
-            Case "cls", "clear" : Console.Clear()
-            Case "cp" : CopyFile(rawsplit)
-            Case "del", "rm" : DeleteFile(rawsplit)
-            Case "dir", "ls" : ListDirectory()
-            Case "login", "su" : ChangeUser(rawsplit)
-            Case "md" : MakeDirectory(rawsplit)
-            Case "mount" : ChangeMount(rawsplit)
-            Case "mounts", "dev", "devices" : ShowMounts()
-            Case "mv" : CopyFile(rawsplit) : deletefile(rawsplit)
-            Case "path" : Console.WriteLine(ActiveDirectory.Path)
-            Case "cp" : CopyFile(rawsplit)
+            Case "cd" : Return ChangeDirectory(rawsplit)
+            Case "cd.." : Return ChangeDirectory({"cd", ".."})
+            Case "cls", "clear" : Console.Clear() : Return True
+            Case "cp" : Return CopyFile(rawsplit)
+            Case "del", "rm" : Return DeleteFile(rawsplit)
+            Case "dir", "ls" : Return ListDirectory()
+            Case "login", "su" : Return ChangeUser(rawsplit)
+            Case "md" : Return MakeDirectory(rawsplit)
+            Case "mv"
+                If CopyFile(rawsplit) = False Then Return False
+                Return DeleteFile(rawsplit)
+            Case "path" : Console.WriteLine(ActiveDirectory.Path) : Return True
+            Case "run", "r" : Return RunFile(rawsplit)
+
+            Case Else : Return Player.Main(rawsplit)
         End Select
-    End Sub
-    Private Sub ListDirectory(Optional ByVal flags As String = "")
+    End Function
+
+    Private Function ListDirectory(Optional ByVal flags As String = "") As Boolean
+        If CheckPrivillege(ActiveDirectory.ReadAccess) = False Then Return False
+
         Dim total As New List(Of String)
         If flags.Contains("-..") = False Then total.Add("[..]")
         Dim files As New List(Of String)
         For Each DirFile In ActiveDirectory.Contents
             If TypeOf DirFile Is Dir Then
-                If flags.Contains("-dir") Then Continue For
-                total.Add("[" & DirFile.Name & "]") : Continue For
+                If flags.Contains("-dir") = False Then total.Add("[" & DirFile.Name & "]")
             ElseIf TypeOf DirFile Is File Then
-                If flags.Contains("-file") Then Continue For
-                files.Add(DirFile.Name) : Continue For
+                If flags.Contains("-file") = False Then files.Add(DirFile.Name)
             End If
         Next
 
@@ -102,74 +129,90 @@
         For Each f In total
             Console.WriteLine(f)
         Next
-    End Sub
-    Private Sub ChangeDirectory(ByVal rawsplit As String())
-        If rawsplit.Length <> 2 Then Console.WriteLine("Syntax: cd [directory]") : Exit Sub
+        Return True
+    End Function
+    Private Function ChangeDirectory(ByVal rawsplit As String()) As Boolean
+        If rawsplit.Length <> 2 Then Console.WriteLine("Syntax: cd [directory]") : Return False
         Dim adName As String = rawsplit(1)
         If adName = "/" Then
             ActiveDirectory = RootDirectory
         ElseIf adName = ".." Then
-            If ActiveDirectory.Equals(RootDirectory) Then Exit Sub 'can't go below root
+            If ActiveDirectory.Equals(RootDirectory) Then Return False 'can't go below root
             ActiveDirectory = ActiveDirectory.ParentDirectory
         Else
             Dim ad As DirFile = ActiveDirectory.GetDirFile(adName)
-            If ad Is Nothing Then Console.WriteLine("Directory not found.") : Exit Sub
-            If TypeOf ad Is File Then Console.WriteLine("Cannot cd into a file.") : Exit Sub
+            If ad Is Nothing Then Console.WriteLine("Directory not found.") : Return False
+            If TypeOf ad Is File Then Console.WriteLine("Cannot cd into a file.") : Return False
             ActiveDirectory = ad
         End If
-    End Sub
-    Private Sub MakeDirectory(ByVal rawsplit As String())
-        If rawsplit.Length <> 2 Then Console.WriteLine("Syntax: md [directory]") : Exit Sub
+
+        Return True
+    End Function
+    Private Function MakeDirectory(ByVal rawsplit As String()) As Boolean
+        If CheckPrivillege(ActiveDirectory.WriteAccess) = False Then Return False
+
+        If rawsplit.Length <> 2 Then Console.WriteLine("Syntax: md [directory]") : Return False
         Dim mdName As String = rawsplit(1)
-        If mdName.Contains("/") Then Console.WriteLine("Directory name cannot contain special characters.")
+        If mdName.Contains("/") Then Console.WriteLine("Directory name cannot contain special characters.") : Return False
+
         Dim newDir As New Dir(mdName)
         ActiveDirectory.Add(newDir)
         Console.WriteLine("New directory created: " & newDir.Path)
-    End Sub
-    Private Sub CopyFile(ByVal rawsplit As String())
+        Return True
+    End Function
+    Private Function CopyFile(ByVal rawsplit As String()) As Boolean
+        If CheckPrivillege(ActiveDirectory.ReadAccess) = False Then Return False
+
         Dim targetName As String
+        Dim target As File
         Dim destinationName As String
 
-        If rawsplit.Length = 3 Then
+        If rawsplit.Length >= 3 Then
             targetName = rawsplit(1)
             destinationName = rawsplit(2)
-            Dim target As File = ActiveDirectory.GetFile(targetName)
-            If target Is Nothing Then Console.WriteLine("File not found.") : Exit Sub
+            target = ActiveDirectory.GetFile(targetName)
+            If target Is Nothing Then Console.WriteLine("File not found.") : Return False
         Else
             ListDirectory("-.. -dir")
             Console.Write("Copy which file? ")
             targetName = Console.ReadLine
-            Dim target As File = ActiveDirectory.GetFile(targetName)
-            If target Is Nothing Then Console.WriteLine("File not found.") : Exit Sub
+            target = ActiveDirectory.GetFile(targetName)
+            If target Is Nothing Then Console.WriteLine("File not found.") : Return False
             Console.Write("To which directory? ")
             destinationName = Console.ReadLine
         End If
 
-        Dim destination As Dir = GetDirFromPath(destinationName)
-        If destination Is Nothing Then Console.WriteLine("Destination directory not found.") : Exit Sub
-        CopyFile(targetName, destinationName)
-    End Sub
-    Private Sub CopyFile(ByVal targetName As String, ByVal path As String)
-        Dim destination As Dir = GetDirFromPath(path)
-        Dim target As File = ActiveDirectory.GetFile(targetName)
+        Dim path As sMachineDirFile = GetDirFileFromPath(destinationName)
+        If path Is Nothing OrElse TypeOf path.DirFile Is Dir = False Then Console.WriteLine("Destination directory not found.") : Return False
+        Dim destinationMachine As Machine = path.Machine
+        Dim destinationDir As Dir = path.DirFile
+        If destinationMachine.CheckPrivillege(destinationDir.WriteAccess) = False Then Return False
 
-        destination.Add(target.Clone)
-    End Sub
-    Private Sub DeleteFile(ByVal rawsplit As String())
-        Dim targetName As String
+        'all checks out, clone file into destination
+        destinationDir.Add(target.Clone)
+        Return True
+    End Function
+    Private Function DeleteFile(ByVal rawsplit As String()) As Boolean
+        If CheckPrivillege(ActiveDirectory.WriteAccess) = False Then Return False
+        If CheckPrivillege(ActiveDirectory.removeAccess) = False Then Return False
+
+        Dim filename As String
         If rawsplit.Length >= 2 Then
-            targetName = rawsplit(1)
+            filename = rawsplit(1)
         Else
-            ListDirectory("-.. -dir")
             Console.Write("Delete which file? ")
-            targetName = Console.ReadLine
+            filename = Console.ReadLine
         End If
 
-        Dim target As File = ActiveDirectory.GetFile(targetName)
-        If target Is Nothing Then Console.WriteLine("File not found.") : Exit Sub
-        ActiveDirectory.Remove(targetName)
-    End Sub
-    Private Sub ChangeUser(ByVal rawsplit As String())
+        Dim path As sMachineDirFile = GetDirFileFromPath(filename)
+        If path Is Nothing OrElse TypeOf path.DirFile Is File = False Then Console.WriteLine("File not found.") : Return False
+        Dim machine As Machine = path.Machine
+        Dim file As File = path.DirFile
+
+        file.ParentDirectory.Remove(file)
+        Return True
+    End Function
+    Private Function ChangeUser(ByVal rawsplit As String()) As Boolean
         Dim userName As String
         Dim password As String
 
@@ -183,53 +226,40 @@
             password = rawsplit(2)
         End If
 
-        ChangeUser(userName, password)
-    End Sub
-    Private Sub ChangeUser(ByVal user As String, ByVal password As String)
+        Return ChangeUser(userName, password)
+    End Function
+    Private Function ChangeUser(ByVal user As String, ByVal password As String) As Boolean
         Dim uidTable = GetUserTable()
         If uidTable.ContainsKey(user) = False OrElse uidTable(user)(0) <> password Then
             Console.WriteLine("Invalid user or password!")
-            Exit Sub
+            Return False
         End If
 
         'successful login
         ActiveUser = user
-    End Sub
-    Private Sub ShowMounts()
-        If CheckPrivillege(ePriv.Power) = False Then Exit Sub
-
-        For Each m In Mounts
-            Console.WriteLine(m.Name)
-        Next
-    End Sub
-    Private Sub ChangeMount(ByVal rawsplit As String())
-        If CheckPrivillege(ePriv.Admin) = False Then Exit Sub
-
-        Dim targetName As String
-        If rawsplit.Length < 2 Then
-            ShowMounts()
-            Console.Write("Which mount? ")
-            targetName = Console.ReadLine
+        Return True
+    End Function
+    Private Function RunFile(ByVal rawsplit As String()) As Boolean
+        Dim fileName As String
+        If rawsplit.Length >= 2 Then
+            fileName = rawsplit(1)
         Else
-            targetName = rawsplit(1)
+            Console.Write("Which file? ")
+            fileName = Console.ReadLine()
         End If
 
-        Dim target As Machine = Nothing
-        For Each m In Mounts
-            If m.Name.ToLower = targetName.ToLower Then target = m : Exit For
-        Next
-        If target Is Nothing Then Console.WriteLine("Invalid mount name.") : Exit Sub
+        Dim file As File = ActiveDirectory.GetFile(fileName)
+        If file Is Nothing Then Console.WriteLine("Invalid file name.") : Return False
+        If CheckPrivillege(file.ReadAccess) = False Then Return False
+    End Function
+#End Region
 
-        ActiveMount = target
-    End Sub
-
-    Public Sub DebugSetup()
+    Public Sub DebugSetupMainframe()
         Name = "mainframe"
-        ActiveUser = "guest"
+        Type = "PC"
+        ActiveUser = "admin"
 
-        Dim etc As Dir = GetDirFromPath("/etc/")
-        Dim passwd As File = etc.GetFile("passwd")
-        passwd.Contents.Add("admin:donkeypuncher123:9")
+        Passwd.Contents.Add("admin:donkeypuncher123:9")
         passwd.Contents.Add("guest::0")
         passwd.Contents.Add("haxxor:leethax69:5")
 
@@ -241,5 +271,18 @@
         RootDirectory.GetDir("test1").Add(New File("guests.txt"))
         RootDirectory.GetDir("test2").Add(New Dir("dump"))
         RootDirectory.GetDir("test2").GetDir("dump").Add(New Dir("ster"))
+    End Sub
+    Public Sub DebugSetupDrone()
+        Name = "grugnir"
+        Type = "drone"
+        ActiveUser = "admin"
+
+        Passwd.Contents.Add("admin:admin:9")
+
+        With RootDirectory
+            .Add(New Dir("cmds"))
+            .Add(New Dir("gearware"))
+            .Add(New Dir("software"))
+        End With
     End Sub
 End Class

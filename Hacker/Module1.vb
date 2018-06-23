@@ -1,12 +1,18 @@
 ﻿Module Module1
 
     Sub Main()
-        Dim machine As New Machine
-        machine.DebugSetup()
+        Dim mainframe As New Machine
+        mainframe.DebugSetupMainframe()
+        Player.AddMount(mainframe)
+        Dim drone As New Machine
+        drone.DebugSetupDrone()
+        Player.AddMount(drone)
+
         While True
-            Console.Write(machine.Prompt & "$ ")
+            Dim am As Machine = Player.ActiveMount
+            Console.Write(am.Prompt & "$ ")
             Dim input As String = Console.ReadLine
-            machine.Main(input)
+            am.Main(input)
             Console.WriteLine()
         End While
     End Sub

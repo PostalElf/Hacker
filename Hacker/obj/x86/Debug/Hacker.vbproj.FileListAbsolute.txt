@@ -6,3 +6,11 @@ D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.vbproj.GenerateReso
 D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.exe
 D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.xml
 D:\Visual Studio Projects\Hacker\Hacker\obj\x86\Debug\Hacker.pdb
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\obj\x86\Debug\Hacker.exe
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\obj\x86\Debug\Hacker.xml
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\obj\x86\Debug\Hacker.pdb
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\bin\Debug\Hacker.exe
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\bin\Debug\Hacker.pdb
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\bin\Debug\Hacker.xml
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\obj\x86\Debug\Hacker.Resources.resources
+C:\Users\Owner\Documents\Visual Studio 2010\Projects\Hacker\Hacker\obj\x86\Debug\Hacker.vbproj.GenerateResource.Cache
