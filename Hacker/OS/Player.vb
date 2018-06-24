@@ -1,4 +1,5 @@
 ﻿Public Class Player
+#Region "Mounts"
     Public Shared ActiveMount As Machine
     Private Shared Mounts As New List(Of Machine)
 
@@ -49,4 +50,12 @@
         ActiveMount = target
         Return True
     End Function
+#End Region
+
+#Region "Grid"
+    Private Shared UIDs As New Dictionary(Of String, Machine)
+    Public Shared Function GetMachineFromUID(ByVal UID As String) As Machine
+        If UIDs.ContainsKey(UID) Then Return UIDs(UID) Else Return Nothing
+    End Function
+#End Region
 End Class

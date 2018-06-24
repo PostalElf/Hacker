@@ -37,6 +37,17 @@
     Private ActiveUser As String
     Private ActiveDirectory As Dir
 
+#Region "Security"
+    Private SecurityLevel As Integer
+    Private Threat As Integer
+    Private Cycles As Integer
+    Private Sub CycleCountdown(ByVal activity As Integer)
+        If SecurityLevel <= 5 Then Exit Sub
+
+
+    End Sub
+#End Region
+
 #Region "Utilities"
     Public Function GetDirFileFromPath(ByVal path As String) As sMachineDirFile
         'strip beginning and end /, then split path into string()
@@ -152,6 +163,7 @@
         For Each f In total
             Console.WriteLine(f)
         Next
+        CycleCountdown(0)
         Return True
     End Function
     Private Function ChangeDirectory(ByVal rawsplit As String()) As Boolean
@@ -169,6 +181,7 @@
             ActiveDirectory = ad
         End If
 
+        CycleCountdown(0)
         Return True
     End Function
     Private Function MakeDirectory(ByVal rawsplit As String()) As Boolean
@@ -181,38 +194,43 @@
         Dim newDir As New Dir(mdName)
         ActiveDirectory.Add(newDir)
         Console.WriteLine("New directory created: " & newDir.Path)
+        CycleCountdown(0)
         Return True
     End Function
     Private Function CopyFile(ByVal rawsplit As String()) As Boolean
         If CheckPrivillege(ActiveDirectory.ReadAccess) = False Then Return False
 
+        'get targetName and destinationName
         Dim targetName As String
-        Dim target As File
         Dim destinationName As String
-
         If rawsplit.Length >= 3 Then
             targetName = rawsplit(1)
             destinationName = rawsplit(2)
-            target = ActiveDirectory.GetFile(targetName)
-            If target Is Nothing Then Console.WriteLine("File not found.") : Return False
         Else
             ListDirectory("-.. -dir")
             Console.Write("Copy which file? ")
             targetName = Console.ReadLine
-            target = ActiveDirectory.GetFile(targetName)
-            If target Is Nothing Then Console.WriteLine("File not found.") : Return False
             Console.Write("To which directory? ")
             destinationName = Console.ReadLine
         End If
 
-        Dim path As sMachineDirFile = GetDirFileFromPath(destinationName)
-        If path Is Nothing OrElse TypeOf path.DirFile Is Dir = False Then Console.WriteLine("Destination directory not found.") : Return False
-        Dim destinationMachine As Machine = path.Machine
-        Dim destinationDir As Dir = path.DirFile
+        'get targetPath
+        Dim targetPath As sMachineDirFile = GetDirFileFromPath(destinationName)
+        If targetPath Is Nothing Then Console.Write("Target file not found.") : Return False
+        If TypeOf targetPath.DirFile Is File = False Then Console.WriteLine("Invalid target file.") : Return False
+        Dim target As File = targetPath.DirFile
+
+        'get destinationPath
+        Dim destinationPath As sMachineDirFile = GetDirFileFromPath(destinationName)
+        If destinationPath Is Nothing OrElse TypeOf destinationPath.DirFile Is Dir = False Then Console.WriteLine("Destination directory not found.") : Return False
+        Dim destinationMachine As Machine = destinationPath.Machine
+        Dim destinationDir As Dir = destinationPath.DirFile
         If destinationMachine.CheckPrivillege(destinationDir.WriteAccess) = False Then Return False
 
         'all checks out, clone file into destination
         destinationDir.Add(target.Clone)
+        targetPath.Machine.CycleCountdown(5)
+        If destinationMachine.Equals(targetPath.Machine) = False Then destinationMachine.CycleCountdown(5)
         Return True
     End Function
     Private Function ReadFile(ByVal rawsplit As String()) As Boolean
@@ -229,6 +247,7 @@
         Dim dFile As FileData = CType(path.DirFile, FileData)
         Console.WriteLine(dFile.Name)
         dFile.Display()
+        path.Machine.CycleCountdown(2)
         Return True
     End Function
     Private Function EditFile(ByVal rawsplit As String()) As Boolean
@@ -267,6 +286,7 @@
             lineContent = Console.ReadLine
             dFile.Contents(lineNumber) = lineContent
         End If
+        path.Machine.CycleCountdown(2)
         Return True
     End Function
     Private Function DeleteFile(ByVal rawsplit As String()) As Boolean
@@ -287,6 +307,7 @@
         Dim file As File = path.DirFile
 
         file.ParentDirectory.Remove(file)
+        machine.CycleCountdown(5)
         Return True
     End Function
     Private Function LoginUser(ByVal rawsplit As String()) As Boolean
@@ -326,11 +347,13 @@
         Dim uidTable = GetUserTable()
         If uidTable.ContainsKey(user) = False OrElse uidTable(user)(0) <> password Then
             Console.WriteLine("Invalid user or password!")
+            CycleCountdown(5)
             Return False
         End If
 
         'successful login
         ActiveUser = user
+        CycleCountdown(0)
         Return True
     End Function
     Private Function RunFile(ByVal rawsplit As String()) As Boolean
@@ -360,6 +383,17 @@
 
     Private Function RunDictionary(ByVal rawsplit As String(), ByVal exe As FileExecutable) As Boolean
         If exe Is Nothing Then Return False
+
+        'get target
+        Dim machineName As String
+        If rawsplit.Length >= 2 Then
+            machineName = rawsplit(1)
+        Else
+            Console.Write("Machine UID? ")
+            machineName = Console.ReadLine
+        End If
+        Dim machine As Machine = Player.GetMachineFromUID(machineName)
+        If machine Is Nothing Then Console.WriteLine("Invalid UID.") : Return False
 
         'calculate dictionary cost
 
