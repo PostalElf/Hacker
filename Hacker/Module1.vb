@@ -1,6 +1,10 @@
 ﻿Module Module1
 
     Sub Main()
+        Dim testMachine As New Machine
+        testMachine.DebugSetupTestMachine()
+        Player.AddUID(testMachine)
+
         Dim mainframe As New Machine
         mainframe.DebugSetupMainframe()
         Player.AddMount(mainframe)

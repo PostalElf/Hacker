@@ -23,7 +23,13 @@
             Return Type & "-" & Name
         End Get
     End Property
+    Public ReadOnly Property NameUID As String
+        Get
+            Return Name & "@" & UID
+        End Get
+    End Property
     Public Type As String
+    Public UID As String
     Public Overrides Function ToString() As String
         Return Type & "-" & Name
     End Function
@@ -124,6 +130,7 @@
             Case "cd" : Return ChangeDirectory(rawsplit)
             Case "cd.." : Return ChangeDirectory({"cd", ".."})
             Case "cls", "clear" : Console.Clear() : Return True
+            Case "connect" : Return ConnectUID(rawsplit)
             Case "cp" : Return CopyFile(rawsplit)
             Case "del", "rm" : Return DeleteFile(rawsplit)
             Case "dir", "ls" : Return ListDirectory()
@@ -403,6 +410,7 @@
     Public Sub DebugSetupMainframe()
         Name = "mainframe"
         Type = "PC"
+        UID = "0.0.0.0"
         ActiveUser = "admin"
 
         Passwd.Contents.Add("admin:donkeypuncher123:9")
@@ -413,14 +421,16 @@
             .Add(New Dir("test1"))
             .Add(New Dir("test2"))
             .Add(New Dir("test3"))
+
+            .GetDir("test1").Add(New FileData("guests.txt"))
+            .GetDir("test2").Add(New Dir("dump"))
+            .GetDir("test2").GetDir("dump").Add(New Dir("ster"))
         End With
-        RootDirectory.GetDir("test1").Add(New FileData("guests.txt"))
-        RootDirectory.GetDir("test2").Add(New Dir("dump"))
-        RootDirectory.GetDir("test2").GetDir("dump").Add(New Dir("ster"))
     End Sub
     Public Sub DebugSetupDrone()
         Name = "grugnir"
         Type = "drone"
+        UID = "0.0.0.0"
 
         Passwd.Contents.Add("admin:admin:9")
 
@@ -428,6 +438,23 @@
             .Add(New Dir("cmds"))
             .Add(New Dir("gearware"))
             .Add(New Dir("software"))
+        End With
+    End Sub
+    Public Sub DebugSetupTestMachine()
+        Name = "spirax"
+        Type = "server"
+        UID = "5519.9918.5010.2047"
+
+        Passwd.Contents.Add("admin:085fN27:9")
+        Passwd.Contents.Add("power:manmachine47:5")
+        Passwd.Contents.Add("guest:guest:0")
+
+        With RootDirectory
+            Dim users As New Dir("users")
+            users.Add(New Dir("admin"))
+            users.Add(New Dir("power"))
+            users.Add(New Dir("guest"))
+            .Add(users)
         End With
     End Sub
 End Class
